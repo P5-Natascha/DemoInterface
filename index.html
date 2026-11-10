@@ -1,0 +1,229 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>ESP32 RC-Car – Fernsteuerung im Browser</title>
+<style>
+:root{--bg:#eceff3;--ink:#14181f;--mut:#5b6573;--line:#cfd5de;--blue:#2447f5;--panel:#161b24;--panel2:#222a37;--ok:#1f9d55;--warn:#d98a00;--bad:#d6342c;
+--font:"Bahnschrift","DIN Alternate","Segoe UI",system-ui,sans-serif}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{margin:0;background:var(--bg);color:var(--ink);font:17px/1.55 var(--font);font-variant-numeric:tabular-nums}
+a{color:inherit}
+:focus-visible{outline:3px solid var(--blue);outline-offset:3px}
+.wrap{max-width:1120px;margin:0 auto;padding:0 24px}
+header{padding:18px 0;border-bottom:1px solid var(--line)}
+header .wrap{display:flex;justify-content:space-between;align-items:center;gap:16px;flex-wrap:wrap}
+header b{font-size:19px;letter-spacing:.01em}
+nav{display:flex;gap:22px}
+nav a{text-decoration:none;color:var(--mut)}
+nav a:hover{color:var(--ink)}
+
+.hero{display:grid;grid-template-columns:1.05fr .95fr;gap:48px;align-items:center;padding:64px 0 72px}
+h1{font-size:clamp(40px,6vw,76px);line-height:.98;margin:0 0 22px;font-weight:700;letter-spacing:-.02em}
+.lede{max-width:46ch;color:var(--mut);font-size:19px;margin:0 0 26px}
+.pills{display:flex;gap:10px;flex-wrap:wrap}
+.pill{display:inline-flex;align-items:center;gap:8px;padding:7px 14px;border:1px solid var(--line);border-radius:99px;background:#fff;font-size:15px}
+.dot{width:10px;height:10px;border-radius:50%;background:var(--bad)}
+.on .dot{background:var(--ok)}
+
+.cockpit{background:var(--panel);color:#e8edf5;border-radius:28px;padding:28px;box-shadow:0 30px 60px -30px rgba(20,24,31,.55)}
+.cockpit h2{margin:0 0 4px;font-size:21px}
+.cockpit p{margin:0 0 22px;color:#98a4b6;font-size:15px}
+#pad{-webkit-touch-callout:none;position:relative;width:min(100%,300px);aspect-ratio:1;margin:0 auto;border-radius:50%;touch-action:none;user-select:none;cursor:grab;
+background:linear-gradient(var(--panel2),var(--panel2)) center/2px 70% no-repeat,linear-gradient(var(--panel2),var(--panel2)) center/70% 2px no-repeat,radial-gradient(circle,#1b2230 0 62%,#0f131a 63%);
+box-shadow:inset 0 0 0 2px #2c3647,inset 0 12px 30px rgba(0,0,0,.5)}
+#pad.drag{cursor:grabbing}
+#knob{position:absolute;left:50%;top:50%;width:34%;aspect-ratio:1;border-radius:50%;transform:translate(-50%,-50%);
+background:radial-gradient(circle at 35% 30%,#6f8cff,var(--blue) 60%,#1a33b8);box-shadow:0 10px 22px rgba(0,0,0,.55)}
+#pad.lock{opacity:.35;pointer-events:none}
+.raw{display:flex;justify-content:center;gap:34px;margin-top:22px;font-size:15px;color:#98a4b6}
+.raw b{display:block;font-size:34px;color:#fff;font-weight:600;line-height:1.1;min-width:4ch;text-align:center}
+.hint{text-align:center;margin:14px 0 0;font-size:14px;color:#7d8aa0}
+
+.gh{display:inline-flex;align-items:center;gap:8px;padding:8px 16px;border-radius:99px;background:var(--ink);color:#fff;text-decoration:none;font-size:15px}
+.gh:hover{background:var(--blue)}
+.gh svg{width:18px;height:18px;fill:currentColor}
+section{padding:56px 0;border-top:1px solid var(--line)}
+h2.t{font-size:clamp(28px,3.6vw,42px);line-height:1.1;margin:0 0 10px;letter-spacing:-.01em}
+.sub{color:var(--mut);max-width:56ch;margin:0 0 34px}
+.tele{display:grid;grid-template-columns:1.3fr 1fr 1fr;gap:18px}
+.tile{background:#fff;border:1px solid var(--line);border-radius:14px;padding:22px}
+.tile h3{margin:0 0 12px;font-size:16px;color:var(--mut);font-weight:500}
+.val{font-size:44px;font-weight:700;line-height:1}
+.val small{font-size:18px;font-weight:500;color:var(--mut);margin-left:4px}
+.bar{height:12px;background:#e3e7ee;border-radius:9px;margin-top:16px;position:relative;overflow:hidden}
+.bar i{position:absolute;left:0;top:0;bottom:0;width:0;background:var(--ok);border-radius:9px;transition:width .25s,background .25s}
+.bar.mid i{left:50%;width:0;border-radius:0}
+.span2{grid-column:span 2}
+.dist{display:grid;grid-template-columns:1fr 1fr;gap:22px}
+
+.flow{display:grid;grid-template-columns:repeat(4,1fr);gap:0;counter-reset:s}
+.flow>div{padding:0 22px 0 0;position:relative}
+.flow>div:not(:last-child)::after{content:"";position:absolute;right:10px;top:15px;width:26px;height:2px;background:var(--line)}
+.flow b{display:inline-grid;place-items:center;width:32px;height:32px;border-radius:50%;background:var(--ink);color:#fff;font-size:15px;margin-bottom:12px}
+.flow h3{margin:0 0 6px;font-size:19px}
+.flow p{margin:0;color:var(--mut);font-size:15.5px}
+.specs{display:grid;grid-template-columns:repeat(2,1fr);gap:0 56px}
+.specs div{display:flex;justify-content:space-between;gap:20px;padding:14px 0;border-bottom:1px solid var(--line)}
+.specs span{color:var(--mut)}
+footer{padding:30px 0 44px;color:var(--mut);font-size:15px;border-top:1px solid var(--line)}
+
+@media(max-width:860px){
+.hero{grid-template-columns:1fr;gap:36px;padding:40px 0}
+.tele{grid-template-columns:1fr}.span2{grid-column:auto}
+.flow{grid-template-columns:1fr 1fr;gap:28px 0}.flow>div::after{display:none}
+.specs{grid-template-columns:1fr}
+nav{display:none}
+}
+@media(prefers-reduced-motion:reduce){*{transition:none!important;scroll-behavior:auto!important}}
+</style>
+</head>
+<body>
+<header><div class="wrap"><b>ESP32 RC-Car</b>
+<nav><a href="#telemetrie">Telemetrie</a><a href="#technik">So funktioniert’s</a><a href="#projekt">Das Projekt</a></nav>
+<a class="gh" data-gh href="#" target="_blank" rel="noopener"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/></svg>GitHub</a></div></header>
+
+<main>
+<div class="wrap hero">
+  <div>
+    <h1>Ein Auto.<br>Ein Joystick.<br>Dein Browser.</h1>
+    <p class="lede">Dieses ferngesteuerte Auto fährt mit einem ESP32 und einer selbstgebauten Fernbedienung. Hier steuerst du es über einen virtuellen Joystick und siehst live, was die Sensoren melden.</p>
+    <div class="pills">
+      <span class="pill" id="pBack"><i class="dot"></i>Server</span>
+      <span class="pill" id="pCar"><i class="dot"></i>Auto</span>
+      <span class="pill" id="pMode"><i class="dot"></i>Fahrmodus</span>
+      <span class="pill"><span id="pps">0</span> Pakete/s</span>
+    </div>
+  </div>
+
+  <div class="cockpit" id="cockpit">
+    <h2>Steuerung</h2>
+    <p id="ctrlMsg">Knauf ziehen oder mit Pfeiltasten und WASD fahren.</p>
+    <div id="pad" role="application" aria-label="Virtueller Joystick"><div id="knob"></div></div>
+    <div class="raw"><span>X<b id="rx">2048</b></span><span>Y<b id="ry">2048</b></span></div>
+    <p class="hint">Rohwerte 0 bis 4095, Mitte = 2048</p>
+  </div>
+</div>
+
+<section id="telemetrie"><div class="wrap">
+  <h2 class="t">Live vom Auto</h2>
+  <p class="sub">Die Werte kommen über die TCP-Verbindung und werden mehrmals pro Sekunde aktualisiert.</p>
+  <div class="tele">
+    <div class="tile"><h3>Akku</h3><div class="val"><span id="batt">–</span><small>V</small></div><div class="bar"><i id="battBar"></i></div></div>
+    <div class="tile"><h3>Stromaufnahme</h3><div class="val"><span id="ampr">–</span><small>A</small></div><div class="bar"><i id="amprBar" style="background:var(--blue)"></i></div></div>
+    <div class="tile"><h3>Lenkung</h3><div class="val"><span id="lenk">–</span><small>V</small></div><div class="bar mid"><i id="lenkBar" style="background:var(--blue)"></i></div></div>
+    <div class="tile span2"><h3>Abstand zu Hindernissen</h3>
+      <div class="dist">
+        <div><div class="val"><span id="absv">–</span><small>m vorne</small></div><div class="bar"><i id="absvBar"></i></div></div>
+        <div><div class="val"><span id="absh">–</span><small>m hinten</small></div><div class="bar"><i id="abshBar"></i></div></div>
+      </div></div>
+  </div>
+</div></section>
+
+<section id="technik"><div class="wrap">
+  <h2 class="t">So kommt dein Daumen ans Auto</h2>
+  <p class="sub">Browser können keine UDP- oder TCP-Verbindungen öffnen. Deshalb vermittelt ein fester Server zwischen Website und Auto.</p>
+  <div class="flow">
+    <div><b>1</b><h3>Joystick</h3><p>Der Browser berechnet X und Y als Werte von 0 bis 4095, genau wie der Analogstick der Fernbedienung.</p></div>
+    <div><b>2</b><h3>WebSocket</h3><p>Die Werte gehen etwa 30-mal pro Sekunde an den Server.</p></div>
+    <div><b>3</b><h3>UDP und TCP</h3><p>Der Server sendet die Joystickdaten per UDP (Port 9005) und empfängt Sensordaten per TCP (Port 9006).</p></div>
+    <div><b>4</b><h3>Auto</h3><p>Der ESP32 wertet die Daten aus und steuert Motor und Lenkung.</p></div>
+  </div>
+</div></section>
+
+<section id="projekt"><div class="wrap">
+  <h2 class="t">Das Projekt</h2>
+  <p class="sub">Hier ist Platz für die Geschichte hinter dem Auto. Die Eckdaten stehen schon, den Rest füllen wir später.</p>
+  <div class="specs">
+    <div><span>Steuerung</span>Analoger Joystick, 12 Bit</div>
+    <div><span>Joystickdaten</span>UDP, 2 × uint16</div>
+    <div><span>Sensordaten</span>TCP, Textzeilen</div>
+    <div><span>Messwerte</span>Akku, Strom, Lenkung, Abstand</div>
+  </div>
+</div></section>
+</main>
+<footer><div class="wrap">Sicherheit: Wenn länger als eine halbe Sekunde keine Eingabe ankommt, sendet der Server den Joystick in Mittelstellung.<div style="margin-top:16px"><a class="gh" data-gh href="#" target="_blank" rel="noopener"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/></svg>Quellcode auf GitHub</a></div></div></footer>
+
+<script>
+const $=id=>document.getElementById(id);
+const pad=$('pad'),knob=$('knob');
+const GITHUB_URL='https://github.com/orgs/P5-Natascha/repositories';  // hier den GitHub-Link eintragen
+const INVERT_Y=false;               // true, falls "hoch" am Auto den Wert 0 statt 4095 bedeuten soll
+let nx=0,ny=0,drag=false,idle=99,ws,canCtrl=false;
+const keys=new Set();
+
+function setStick(x,y){
+  const l=Math.hypot(x,y); if(l>1){x/=l;y/=l}
+  nx=x;ny=y;
+  const R=(pad.clientWidth-knob.clientWidth)/2;
+  knob.style.transform=`translate(calc(-50% + ${x*R}px),calc(-50% - ${y*R}px))`;
+  const yy=INVERT_Y?-y:y;
+  $('rx').textContent=Math.round((x+1)/2*4095);
+  $('ry').textContent=Math.round((yy+1)/2*4095);
+}
+function fromPointer(e){
+  const r=pad.getBoundingClientRect(),R=(r.width-knob.offsetWidth)/2;
+  setStick((e.clientX-r.left-r.width/2)/R,-(e.clientY-r.top-r.height/2)/R);
+}
+pad.addEventListener('pointerdown',e=>{drag=true;pad.classList.add('drag');pad.setPointerCapture(e.pointerId);fromPointer(e)});
+pad.addEventListener('pointermove',e=>drag&&fromPointer(e));
+const release=()=>{drag=false;pad.classList.remove('drag');setStick(0,0)};
+pad.addEventListener('pointerup',release);
+pad.addEventListener('pointercancel',release);
+document.addEventListener('visibilitychange',()=>document.hidden&&release());
+
+const map={ArrowUp:'u',w:'u',ArrowDown:'d',s:'d',ArrowLeft:'l',a:'l',ArrowRight:'r',d:'r'};
+function keyStick(){
+  setStick((keys.has('r')?1:0)-(keys.has('l')?1:0),(keys.has('u')?1:0)-(keys.has('d')?1:0));
+}
+addEventListener('keydown',e=>{const k=map[e.key]||map[e.key.toLowerCase()];if(k&&!drag){e.preventDefault();keys.add(k);keyStick()}});
+addEventListener('keyup',e=>{const k=map[e.key]||map[e.key.toLowerCase()];if(k&&!drag){keys.delete(k);keyStick()}});
+
+setInterval(()=>{
+  if(nx||ny)idle=0;
+  if(idle++<6&&ws&&ws.readyState===1&&canCtrl)
+    ws.send(JSON.stringify({x:+$('rx').textContent,y:+$('ry').textContent}));
+},33);
+
+const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
+const colorFor=p=>p>.5?'var(--ok)':p>.2?'var(--warn)':'var(--bad)';
+function setVal(id,v,fmt){$(id).textContent=v==null?'–':fmt(v)}
+
+function render(s){
+  $('pBack').classList.add('on');
+  $('pCar').classList.toggle('on',s.tcp);
+  $('pps').textContent=s.pps;
+  $('pMode').classList.toggle('on',s.mode===1);
+  canCtrl=s.ctrl;
+  pad.classList.toggle('lock',!s.ctrl);
+  $('ctrlMsg').textContent=!s.ctrl?'Nur Ansicht: Der Zugangsschlüssel fehlt oder ist nicht mehr gültig. Bitte den QR-Code erneut scannen.':s.blocked?'Die Verbindung zum Auto ist derzeit vom Admin gesperrt.':s.tcp?'Knauf ziehen oder mit Pfeiltasten und WASD fahren.':'Das Auto ist nicht verbunden. Der Server versucht es weiter.';
+  const t=s.tele||{};
+  setVal('batt',t.BATT,v=>v.toFixed(2));
+  const bp=t.BATT==null?0:clamp((t.BATT-3.3)/(4.2-3.3),0,1);
+  Object.assign($('battBar').style,{width:bp*100+'%',background:colorFor(bp)});
+  setVal('ampr',t.AMPR,v=>v.toFixed(2));
+  $('amprBar').style.width=(t.AMPR==null?0:clamp(t.AMPR/2,0,1)*100)+'%';
+  setVal('lenk',t.LENK,v=>v.toFixed(2));
+  const lp=t.LENK==null?.5:clamp(t.LENK/2.4,0,1),b=$('lenkBar').style;
+  b.left=Math.min(lp,.5)*100+'%';b.width=Math.abs(lp-.5)*100+'%';
+  for(const [k,id] of [['ABSV','absv'],['ABSH','absh']]){
+    const mm=t[k];
+    setVal(id,mm,v=>(v/1000).toFixed(2));
+    const p=mm==null?0:clamp(mm/3000,0,1);
+    Object.assign($(id+'Bar').style,{width:p*100+'%',background:mm<500?'var(--bad)':mm<1000?'var(--warn)':'var(--ok)'});
+  }
+}
+function connect(){
+  const key=new URLSearchParams(location.search).get('key')||'';
+  ws=new WebSocket((location.protocol==='https:'?'wss://':'ws://')+location.host+'/ws?key='+encodeURIComponent(key));
+  ws.onmessage=e=>render(JSON.parse(e.data));
+  ws.onclose=()=>{canCtrl=false;$('pBack').classList.remove('on');$('pCar').classList.remove('on');pad.classList.add('lock');setTimeout(connect,1500)};
+}
+document.querySelectorAll('[data-gh]').forEach(a=>a.href=GITHUB_URL);
+pad.addEventListener('contextmenu',e=>e.preventDefault());
+setStick(0,0);connect();
+</script>
+</body>
+</html>

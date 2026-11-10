@@ -1,0 +1,28 @@
+services:
+  rc-car:
+    build: .
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:8087:8080"                                # öffentliche Steuerung
+      - "${ADMIN_BIND:-127.0.0.1}:8088:8081"       # Admin: nur lokal, Pangolin liegt davor
+    # Damit der Container den Host erreicht (z. B. den Testserver):
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    environment:
+      CAR_IP: ${CAR_IP:-host.docker.internal}
+      CAR_UDP_PORT: ${CAR_UDP_PORT:-9005}
+      CAR_TCP_PORT: ${CAR_TCP_PORT:-9006}
+      DISCONNECT_GRACE: ${DISCONNECT_GRACE:-5}
+      PUBLIC_URL: ${PUBLIC_URL:-}
+      CONTROL_TOKEN: ${CONTROL_TOKEN:-}
+    volumes:
+      - rc-data:/data                              # speichert Key und Sperr-Flag
+    networks:
+      - pangolin_default
+
+volumes:
+  rc-data:
+
+networks:
+  pangolin_default:
+    external: true

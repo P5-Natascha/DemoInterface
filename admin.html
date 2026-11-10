@@ -1,0 +1,131 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Admin – ESP32 RC-Car</title>
+<style>
+:root{--bg:#eceff3;--ink:#14181f;--mut:#5b6573;--line:#cfd5de;--blue:#2447f5;--ok:#1f9d55;--bad:#d6342c;
+--font:"Bahnschrift","DIN Alternate","Segoe UI",system-ui,sans-serif}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:17px/1.55 var(--font);font-variant-numeric:tabular-nums}
+:focus-visible{outline:3px solid var(--blue);outline-offset:3px}
+.wrap{max-width:1000px;margin:0 auto;padding:0 24px}
+header{padding:18px 0;border-bottom:1px solid var(--line)}
+header b{font-size:19px}header span{color:var(--mut);margin-left:10px}
+h1{font-size:clamp(32px,5vw,54px);line-height:1.02;margin:44px 0 10px;letter-spacing:-.02em}
+.sub{color:var(--mut);margin:0 0 32px;max-width:56ch}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-bottom:20px}
+.card{background:#fff;border:1px solid var(--line);border-radius:16px;padding:26px}
+.card h2{margin:0 0 6px;font-size:22px}
+.card>p{margin:0 0 20px;color:var(--mut);font-size:15.5px}
+#qr{width:min(100%,240px);aspect-ratio:1;border:1px solid var(--line);border-radius:12px;padding:8px;background:#fff;margin-bottom:18px}
+#qr svg{display:block;width:100%;height:100%}
+.card.big{position:fixed;inset:0;z-index:10;border:0;border-radius:0;overflow:auto;display:flex;flex-direction:column;align-items:center;justify-content:center;
+padding:max(16px,env(safe-area-inset-top)) 16px max(16px,env(safe-area-inset-bottom))}
+.card.big>h2,.card.big>p,.card.big input{display:none}
+.card.big #qr{width:min(94vw,calc(100vh - 120px));width:min(94vw,calc(100dvh - 120px));margin-bottom:20px}
+.card.big .btns{justify-content:center}
+input{width:100%;font:inherit;font-size:14px;padding:10px 14px;border:1px solid var(--line);border-radius:10px;background:#f6f8fa;color:var(--ink);margin-bottom:14px}
+.btns{display:flex;gap:10px;flex-wrap:wrap}
+.btn{font:inherit;font-size:16px;padding:11px 20px;border-radius:99px;border:0;cursor:pointer;background:var(--ink);color:#fff}
+.btn.sec{background:#fff;color:var(--ink);border:1px solid var(--line)}
+.btn.danger{background:var(--bad)}.btn.ok{background:var(--ok)}
+.btn:hover{filter:brightness(1.15)}
+.pill{display:inline-flex;align-items:center;gap:8px;padding:7px 14px;border:1px solid var(--line);border-radius:99px;background:#fff;font-size:15px;margin-bottom:16px}
+.dot{width:10px;height:10px;border-radius:50%;background:var(--bad)}.on .dot{background:var(--ok)}
+.rows div{display:flex;justify-content:space-between;gap:16px;padding:11px 0;border-bottom:1px solid var(--line)}
+.rows span{color:var(--mut)}
+#err{background:#fde8e6;border:1px solid var(--bad);border-radius:10px;padding:10px 16px;margin-bottom:20px}
+@media(max-width:760px){.grid{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<header><div class="wrap"><b>ESP32 RC-Car</b><span>Admin</span></div></header>
+<main class="wrap">
+  <h1>Admin-Panel</h1>
+  <p class="sub">Zugang verwalten und die Verbindung zum Auto notfalls von Hand trennen.</p>
+  <div id="err" hidden>Der Server ist nicht erreichbar. Es wird weiter versucht.</div>
+  <div class="grid">
+    <section class="card" id="keyCard">
+      <h2>Zugangsschlüssel</h2>
+      <p>Wer diesen QR-Code scannt, darf das Auto steuern. Ein neuer Schlüssel macht alle alten Links und QR-Codes sofort ungültig.</p>
+      <div id="qr" role="img" aria-label="QR-Code mit dem Steuerungslink"></div>
+      <input id="url" readonly aria-label="Steuerungslink">
+      <div class="btns">
+        <button class="btn sec" id="enlarge">Vergrößern</button>
+        <button class="btn sec" id="copy">Link kopieren</button>
+        <button class="btn" id="regen">Neu generieren</button>
+      </div>
+    </section>
+    <section class="card">
+      <h2>Verbindung zum Auto</h2>
+      <div class="pill" id="state"><i class="dot"></i><span id="stateTxt">–</span></div>
+      <p id="toggleInfo"></p>
+      <div class="btns"><button class="btn" id="toggle">–</button></div>
+      <div class="rows" style="margin-top:26px">
+        <div><span>Auto (TCP)</span><b id="tcp">–</b></div>
+        <div><span>Ziel</span><b id="car">–</b></div>
+        <div><span>Browser verbunden</span><b id="clients">0</b></div>
+        <div><span>davon mit Steuerrecht</span><b id="drivers">0</b></div>
+        <div><span>Fahrmodus</span><b id="mode">–</b></div>
+        <div><span>Joystick-Pakete pro Sekunde</span><b id="pps">0</b></div>
+      </div>
+    </section>
+  </div>
+</main>
+<script>
+const $=id=>document.getElementById(id);
+let cur=null,lastQr='';
+async function api(path,body){
+  const o=body===undefined?{}:{method:'POST',headers:{'Content-Type':'application/json','X-Admin':'1'},body:JSON.stringify(body)};
+  const r=await fetch(path,o);
+  if(!r.ok)throw new Error(r.status);
+  return r.json();
+}
+function render(s){
+  cur=s;
+  if(s.qr!==lastQr){$('qr').innerHTML=s.qr;lastQr=s.qr}
+  $('url').value=s.url;
+  $('state').classList.toggle('on',s.allowed);
+  $('stateTxt').textContent=s.allowed?'Verbindung erlaubt':'Verbindung gesperrt';
+  $('toggleInfo').textContent=s.allowed
+    ?'Der Server verbindet sich automatisch mit dem Auto, sobald eine Seite geöffnet ist.'
+    :'Der Server trennt das Auto und baut keine Verbindung auf, auch wenn Besucher auf der Seite sind.';
+  const b=$('toggle');
+  b.textContent=s.allowed?'Verbindung kappen':'Verbindung wiederherstellen';
+  b.className='btn '+(s.allowed?'danger':'ok');
+  $('tcp').textContent=s.tcp?'verbunden':'getrennt';
+  $('car').textContent=s.car;
+  $('clients').textContent=s.clients;
+  $('drivers').textContent=s.drivers;
+  $('mode').textContent=s.mode?'Fahrt (1)':'Ruhe (0)';
+  $('pps').textContent=s.pps;
+  $('err').hidden=true;
+}
+const fail=()=>{$('err').hidden=false};
+async function load(){try{render(await api('/api/state'))}catch{fail()}}
+$('regen').onclick=async()=>{
+  try{render(await api('/api/key',{}))}catch{fail()}
+};
+$('toggle').onclick=async()=>{
+  try{render(await api('/api/car',{allowed:!cur.allowed}))}catch{fail()}
+};
+$('copy').onclick=async()=>{
+  try{await navigator.clipboard.writeText($('url').value);$('copy').textContent='Kopiert'}catch{$('url').select()}
+  setTimeout(()=>$('copy').textContent='Link kopieren',1500);
+};
+const card=$('keyCard');
+function setBig(on){
+  card.classList.toggle('big',on);
+  $('enlarge').textContent=on?'Verkleinern':'Vergrößern';
+  if(on){card.requestFullscreen?.().catch(()=>{})}
+  else if(document.fullscreenElement){document.exitFullscreen().catch(()=>{})}
+}
+$('enlarge').onclick=()=>setBig(!card.classList.contains('big'));
+document.addEventListener('fullscreenchange',()=>{if(!document.fullscreenElement&&card.classList.contains('big'))setBig(false)});
+addEventListener('keydown',e=>{if(e.key==='Escape'&&card.classList.contains('big'))setBig(false)});
+load();setInterval(load,2000);
+</script>
+</body>
+</html>

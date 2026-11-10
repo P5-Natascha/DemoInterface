@@ -114,19 +114,21 @@ main{display:grid;grid-template-columns:minmax(190px,28vw) 1fr;grid-template-row
 padding:max(8px,env(safe-area-inset-top)) max(10px,env(safe-area-inset-right)) max(8px,env(safe-area-inset-bottom)) max(10px,env(safe-area-inset-left))}
 .hero,.hero>div:first-child,section,section .wrap{display:contents}
 .tele{grid-area:1/1/2/3;display:flex;gap:8px}
-.tele .tile{padding:6px 10px;border-radius:10px;min-width:0;flex:1}
+.tele .tile{padding:4px 9px;border-radius:10px;min-width:0;flex:1}
 .tele .span2{flex:2.2}
-.tile h3{margin:0 0 2px;font-size:11px}
-.val{font-size:22px}
-.val small{font-size:11px;margin-left:3px}
-.bar{height:5px;margin-top:5px}
+.tile h3{margin:0 0 1px;font-size:10.5px;line-height:1.3}
+.val{font-size:19px}
+.val small{font-size:10.5px;margin-left:3px}
+.bar{height:4px;margin-top:4px}
 .dist{gap:12px}
-.cockpit{grid-area:2/1/3/2;padding:10px;border-radius:18px;display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:0;overflow:hidden}
-#pad{width:min(100%,calc(100vh - 185px));width:min(100%,calc(100dvh - 185px))}
-#ctrlMsg{margin:0 0 6px;font-size:11px;line-height:1.25;text-align:center}
+.cockpit{grid-area:2/1/3/2;padding:10px;border-radius:18px;display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:0;overflow:hidden;position:relative}
+.padwrap{flex:1;min-height:0;width:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;container-type:size}
+#pad{width:min(100%,calc(100vh - 165px));width:min(100%,calc(100dvh - 165px));width:min(100cqw,calc(100cqh - 36px))}
+#ctrlMsg{position:absolute;z-index:2;left:8px;right:8px;top:8px;margin:0;padding:5px 8px;border-radius:8px;background:rgba(20,24,31,.92);font-size:11px;line-height:1.25;text-align:center;pointer-events:none}
 #ctrlMsg.ok{display:none}
-.raw{margin-top:6px;gap:18px;font-size:11px}
-.raw b{font-size:20px;min-width:3.5ch}
+.raw{margin-top:8px;gap:14px;font-size:12px}
+.raw span{display:flex;align-items:baseline;gap:5px}
+.raw b{display:inline;font-size:18px;line-height:1.2;min-width:4ch;text-align:left}
 .cams{grid-area:2/2/3/3;grid-template-columns:1fr 1fr;gap:8px;height:100%;min-height:0}
 .cam{aspect-ratio:auto;height:100%;border-radius:12px}
 .cam p{font-size:13px}
@@ -135,9 +137,8 @@ padding:max(8px,env(safe-area-inset-top)) max(10px,env(safe-area-inset-right)) m
 .pill{padding:2px 10px;font-size:12px}
 .fsbtn{position:fixed;z-index:20;right:max(10px,env(safe-area-inset-right));bottom:max(10px,env(safe-area-inset-bottom));margin:0;padding:0;width:40px;height:40px;background:rgba(20,24,31,.72)}
 .fsbtn .tx{display:none}
-.cockpit p.fsnote{margin:6px 0 0;font-size:11px}
+.cockpit p.fsnote{position:absolute;left:8px;right:8px;bottom:8px;margin:0;padding:5px 8px;border-radius:8px;background:rgba(20,24,31,.92);font-size:11px}
 html.fs main{grid-template-rows:auto minmax(0,1fr)}
-html.fs #pad{width:min(100%,calc(100vh - 160px));width:min(100%,calc(100dvh - 160px))}
 }
 </style>
 </head>
@@ -162,8 +163,10 @@ html.fs #pad{width:min(100%,calc(100vh - 160px));width:min(100%,calc(100dvh - 16
   <div class="cockpit" id="cockpit">
     <h2>Steuerung</h2>
     <p id="ctrlMsg">Knauf ziehen oder mit Pfeiltasten und WASD fahren.</p>
-    <div id="pad" role="application" aria-label="Virtueller Joystick"><div id="knob"></div></div>
-    <div class="raw"><span>X<b id="rx">2048</b></span><span>Y<b id="ry">2048</b></span></div>
+    <div class="padwrap">
+      <div id="pad" role="application" aria-label="Virtueller Joystick"><div id="knob"></div></div>
+      <div class="raw"><span>X<b id="rx">2048</b></span><span>Y<b id="ry">2048</b></span></div>
+    </div>
     <p class="hint">Rohwerte 0 bis 4095, Mitte = 2048</p>
     <p class="hint tip">Tipp: Handy quer halten, dann siehst du beide Kameras und alle Werte beim Fahren.</p>
     <button class="fsbtn" id="fsBtn" type="button" aria-label="Vollbild und Querformat">

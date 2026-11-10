@@ -137,8 +137,9 @@ async def tcp_loop():
             tcp_writer = None
             state["tcp"], state["tele"] = False, {}
             try:
-                w.write(b"mode:0\r\n")           # Auto nicht im Fahrmodus zurücklassen
+                w.write(b"mode:0\r\n")           # erst Modus 0, dann trennen
                 await w.drain()
+                await asyncio.sleep(0.2)          # dem Auto Zeit geben, den Modus zu übernehmen
             except OSError:
                 pass
             w.close()
@@ -148,13 +149,22 @@ async def tcp_loop():
 
 
 async def mode_loop():
-    """Meldet dem Auto per TCP 'mode:1' (jemand fährt) oder 'mode:0' (niemand)."""
+    """Meldet dem Auto per TCP den Modus:
+    1 = jemand fährt, 4 = Website aktiv (niemand fährt), 0 = niemand da oder gesperrt.
+    Bei Modus 0 sendet das Auto kein TCP mehr, deshalb wird 0 nur kurz vor dem Trennen genutzt."""
     global resend
     last, last_t = None, 0.0
     while True:
         await asyncio.sleep(0.05)
         now = time.monotonic()
-        mode = int(cfg["allowed"] and now - joy["t"] < DEADMAN)
+        if not cfg["allowed"]:
+            mode = 0
+        elif now - joy["t"] < DEADMAN:
+            mode = 1
+        elif clients:
+            mode = 4
+        else:
+            mode = 0
         state["mode"] = mode
         if tcp_writer and (mode != last or resend or now - last_t > 1.0):
             try:

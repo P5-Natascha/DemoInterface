@@ -99,7 +99,7 @@ function render(s){
   $('car').textContent=s.car;
   $('clients').textContent=s.clients;
   $('drivers').textContent=s.drivers;
-  $('mode').textContent=s.mode?'Fahrt (1)':'Ruhe (0)';
+  $('mode').textContent={1:'Fahrt (1)',4:'Website aktiv (4)',0:'Aus (0)'}[s.mode]||s.mode;
   $('pps').textContent=s.pps;
   $('err').hidden=true;
 }

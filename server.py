@@ -5,9 +5,11 @@ Zwei Webseiten in einem Prozess:
   Port 8080  öffentliche Steuerung (Zugang per ?key=...)
   Port 8081  Admin-Panel (Authentifizierung übernimmt Pangolin SSO davor)
 """
-import asyncio, functools, json, os, secrets, signal, struct, time
+import asyncio, functools, json, os, re, secrets, signal, struct, time
+from contextlib import aclosing
 from pathlib import Path
 import segno
+import aiohttp
 from aiohttp import web, WSMsgType
 
 HERE      = Path(__file__).parent
@@ -21,7 +23,16 @@ DATA      = Path(os.getenv("DATA_DIR", "data"))
 CENTER, DEADMAN = 2048, 0.5                    # Mitte; Sekunden ohne Eingabe -> Stopp
 GRACE = float(os.getenv("DISCONNECT_GRACE", "5"))  # Sekunden nach dem letzten Browser bis zum Trennen
 
-cfg = {"token": "", "allowed": True}           # wird in data/settings.json gespeichert
+# Kameras (laufen auf einem eigenen Port des Autos, unabhängig von UDP/TCP)
+CAMERA_HOST = os.getenv("CAMERA_HOST") or CAR_IP
+CAMERA_PORT = os.getenv("CAMERA_PORT") or "81"
+FRONT_URL = os.getenv("CAMERA_FRONT_URL") or \
+    f"http://{CAMERA_HOST}:{CAMERA_PORT}{os.getenv('CAMERA_FRONT_PATH') or '/camera/front_feed'}"
+BACK_URL = os.getenv("CAMERA_BACK_URL") or \
+    f"http://{CAMERA_HOST}:{CAMERA_PORT}{os.getenv('CAMERA_BACK_PATH') or '/camera/back_feed'}"
+CAM_KEY = os.getenv("CAMERA_REQUIRE_KEY", "0").lower() in ("1", "true", "yes")  # Bild nur mit gültigem Key
+
+cfg = {"token": "", "allowed": True, "camera": True}           # wird in data/settings.json gespeichert
 state = {"tele": {}, "tcp": False, "pps": 0, "mode": 0}
 joy = {"x": CENTER, "y": CENTER, "t": 0.0, "n": 99}
 clients = {}        # WebSocket -> Key aus der URL
@@ -46,6 +57,7 @@ def load_cfg():
         d = {}
     cfg["token"] = d.get("token") or os.getenv("CONTROL_TOKEN") or secrets.token_urlsafe(16)
     cfg["allowed"] = bool(d.get("allowed", True))
+    cfg["camera"] = bool(d.get("camera", True))
     save_cfg()
 
 
@@ -184,10 +196,130 @@ async def broadcast_loop():
         if tick % 10 == 0:
             state["pps"], sent = sent, 0
         for ws, key in list(clients.items()):
+            cam = {"allowed": cfg["camera"] and (not CAM_KEY or can(key)), "disabled": not cfg["camera"],
+                   "front": CAMS["front"].ok, "back": CAMS["back"].ok}
             try:
-                await ws.send_json({**state, "ctrl": can(key), "blocked": not cfg["allowed"]})
+                await ws.send_json({**state, "ctrl": can(key), "blocked": not cfg["allowed"], "cam": cam})
             except ConnectionError:
                 pass
+
+
+# ---------- Kameras ----------
+class Cam:
+    def __init__(self, name, url):
+        self.name, self.url = name, url
+        self.subs = set()    # Warteschlangen der Browser, die zuschauen
+        self.frame = None    # letztes Bild
+        self.ok = False      # kommt gerade Bild vom Auto?
+
+
+CAMS = {"front": Cam("front", FRONT_URL), "back": Cam("back", BACK_URL)}
+
+
+def cam_wanted():
+    """Bilder nur holen, solange ein Browser verbunden ist und der Admin die Kamera nicht deaktiviert hat."""
+    return bool(clients) and cfg["camera"]
+
+
+async def mjpeg_frames(resp):
+    """Zerlegt einen MJPEG-Stream (multipart/x-mixed-replace) in einzelne JPEG-Bilder."""
+    ctype = resp.headers.get("Content-Type", "")
+    m = re.search(r'boundary="?([^";\s]+)', ctype)
+    if "multipart" not in ctype or not m:
+        raise ValueError(f"kein MJPEG-Stream (Content-Type: {ctype!r})")
+    marker = b"--" + m.group(1).lstrip("-").encode()
+    buf = b""
+    async for chunk in resp.content.iter_any():
+        buf += chunk
+        while True:
+            i = buf.find(marker)
+            if i < 0:
+                buf = buf[-len(marker):]
+                break
+            h_end = buf.find(b"\r\n\r\n", i)
+            if h_end < 0:
+                buf = buf[i:]
+                break
+            start = h_end + 4
+            cl = re.search(rb"content-length:\s*(\d+)", buf[i:h_end], re.I)
+            if cl:                                   # Länge bekannt: Bild sofort ausliefern
+                end = start + int(cl.group(1))
+                if len(buf) < end:
+                    buf = buf[i:]
+                    break
+                body, buf = buf[start:end], buf[end:]
+            else:                                    # sonst bis zur nächsten Grenze warten
+                j = buf.find(marker, start)
+                if j < 0:
+                    buf = buf[i:]
+                    break
+                body, buf = buf[start:j], buf[j:]
+            k = body.rfind(b"\xff\xd9")
+            if body.startswith(b"\xff\xd8") and k > 0:
+                yield body[:k + 2]
+        if len(buf) > 4_000_000:
+            raise ValueError("Bild zu groß oder Stream defekt")
+
+
+async def cam_loop(cam):
+    """Holt den Stream des Autos, solange cam_wanted() gilt, und verteilt die Bilder an alle Zuschauer."""
+    timeout = aiohttp.ClientTimeout(total=None, connect=5, sock_read=10)
+    last_err = None
+    async with aiohttp.ClientSession(timeout=timeout) as sess:
+        while True:
+            while not cam_wanted():
+                await asyncio.sleep(0.3)
+            try:
+                async with sess.get(cam.url) as resp:
+                    if resp.status != 200:
+                        raise ValueError(f"HTTP {resp.status}")
+                    async with aclosing(mjpeg_frames(resp)) as frames:
+                        async for frame in frames:
+                            if not cam.ok:
+                                print(f"Kamera {cam.name} liefert Bilder", flush=True)
+                            cam.ok, cam.frame, last_err = True, frame, None
+                            for q in cam.subs:
+                                if q.full():
+                                    q.get_nowait()
+                                q.put_nowait(frame)
+                            if not cam_wanted():
+                                break
+            except (aiohttp.ClientError, asyncio.TimeoutError, OSError, ValueError) as e:
+                if last_err != repr(e):
+                    last_err = repr(e)
+                    print(f"Kamera {cam.name} ({cam.url}): {e!r}", flush=True)
+            cam.ok, cam.frame = False, None
+            if cam_wanted():
+                await asyncio.sleep(2)
+
+
+async def cam_stream(req):
+    """Gibt den gemeinsamen Kamerastream an einen Browser weiter (<img src="/camera/front">)."""
+    cam = CAMS.get(req.match_info["name"])
+    if cam is None:
+        raise web.HTTPNotFound()
+    if not cfg["camera"] or (CAM_KEY and not can(req.query.get("key", ""))):
+        raise web.HTTPForbidden()
+    resp = web.StreamResponse(headers={
+        "Content-Type": "multipart/x-mixed-replace; boundary=frame", "Cache-Control": "no-store"})
+    await resp.prepare(req)
+    q = asyncio.Queue(maxsize=2)
+    cam.subs.add(q)
+    try:
+        if cam.frame:
+            q.put_nowait(cam.frame)
+        while cfg["camera"]:
+            try:
+                frame = await asyncio.wait_for(q.get(), 2)
+            except asyncio.TimeoutError:
+                continue
+            await resp.write(b"--frame\r\nContent-Type: image/jpeg\r\nContent-Length: %d\r\n\r\n" % len(frame)
+                             + frame + b"\r\n")
+    except ConnectionError:
+        pass
+    finally:
+        cam.subs.discard(q)
+    return resp
 
 
 # ---------- Öffentliche Seite (Port 8080) ----------
@@ -212,6 +344,7 @@ async def ws_handler(req):
 def public_app():
     app = web.Application()
     app.router.add_get("/ws", ws_handler)
+    app.router.add_get("/camera/{name}", cam_stream)
     app.router.add_get("/", lambda r: web.FileResponse(HERE / "index.html"))
     return app
 
@@ -228,7 +361,9 @@ def admin_state(req):
     return {"key": cfg["token"], "url": url, "qr": qr_svg(url), "allowed": cfg["allowed"],
             "tcp": state["tcp"], "mode": state["mode"], "pps": state["pps"],
             "clients": len(clients), "drivers": sum(can(k) for k in clients.values()),
-            "car": f"{CAR_IP}:{TCP_PORT}"}
+            "car": f"{CAR_IP}:{TCP_PORT}", "camera": cfg["camera"],
+            "cam_front": CAMS["front"].ok, "cam_back": CAMS["back"].ok,
+            "cam_viewers": sum(len(c.subs) for c in CAMS.values())}
 
 
 @web.middleware
@@ -258,12 +393,22 @@ async def api_car(req):
     return web.json_response(admin_state(req))
 
 
+async def api_camera(req):
+    try:
+        cfg["camera"] = bool((await req.json())["allowed"])
+    except (ValueError, KeyError, TypeError):
+        raise web.HTTPBadRequest()
+    save_cfg()
+    return web.json_response(admin_state(req))
+
+
 def admin_app():
     app = web.Application(middlewares=[csrf_guard])
     app.router.add_get("/", lambda r: web.FileResponse(HERE / "admin.html"))
     app.router.add_get("/api/state", api_state)
     app.router.add_post("/api/key", api_key)
     app.router.add_post("/api/car", api_car)
+    app.router.add_post("/api/camera", api_camera)
     return app
 
 
@@ -273,7 +418,8 @@ async def main():
     loop = asyncio.get_running_loop()
     tr, _ = await loop.create_datagram_endpoint(
         asyncio.DatagramProtocol, remote_addr=(CAR_IP, UDP_PORT))
-    tasks = [asyncio.create_task(c) for c in (udp_loop(tr), tcp_loop(), mode_loop(), broadcast_loop())]
+    tasks = [asyncio.create_task(c) for c in (udp_loop(tr), tcp_loop(), mode_loop(), broadcast_loop(),
+                                          cam_loop(CAMS["front"]), cam_loop(CAMS["back"]))]
     runners = []
     for app, port in ((public_app(), HTTP_PORT), (admin_app(), ADMIN_PORT)):
         runner = web.AppRunner(app)

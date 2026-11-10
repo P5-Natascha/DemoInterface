@@ -3,8 +3,8 @@ services:
     build: .
     restart: unless-stopped
     ports:
-      - "127.0.0.1:8087:8080"                                # öffentliche Steuerung
-      - "${ADMIN_BIND:-127.0.0.1}:8088:8081"       # Admin: nur lokal, Pangolin liegt davor
+      - "8080:8080"                                # öffentliche Steuerung
+      - "${ADMIN_BIND:-127.0.0.1}:8081:8081"       # Admin: nur lokal, Pangolin liegt davor
     # Damit der Container den Host erreicht (z. B. den Testserver):
     extra_hosts:
       - "host.docker.internal:host-gateway"
@@ -15,6 +15,13 @@ services:
       DISCONNECT_GRACE: ${DISCONNECT_GRACE:-5}
       PUBLIC_URL: ${PUBLIC_URL:-}
       CONTROL_TOKEN: ${CONTROL_TOKEN:-}
+      CAMERA_HOST: ${CAMERA_HOST:-}
+      CAMERA_PORT: ${CAMERA_PORT:-81}
+      CAMERA_FRONT_PATH: ${CAMERA_FRONT_PATH:-/camera/front_feed}
+      CAMERA_BACK_PATH: ${CAMERA_BACK_PATH:-/camera/back_feed}
+      CAMERA_FRONT_URL: ${CAMERA_FRONT_URL:-}
+      CAMERA_BACK_URL: ${CAMERA_BACK_URL:-}
+      CAMERA_REQUIRE_KEY: ${CAMERA_REQUIRE_KEY:-0}
     volumes:
       - rc-data:/data                              # speichert Key und Sperr-Flag
     networks:

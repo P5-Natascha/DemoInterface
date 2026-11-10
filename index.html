@@ -45,6 +45,12 @@ background:radial-gradient(circle at 35% 30%,#6f8cff,var(--blue) 60%,#1a33b8);bo
 .gh{display:inline-flex;align-items:center;gap:8px;padding:8px 16px;border-radius:99px;background:var(--ink);color:#fff;text-decoration:none;font-size:15px}
 .gh:hover{background:var(--blue)}
 .gh svg{width:18px;height:18px;fill:currentColor}
+.cams{display:grid;grid-template-columns:1fr 1fr;gap:18px}
+.cam{position:relative;margin:0;aspect-ratio:4/3;background:#0f131a;border-radius:16px;overflow:hidden;display:grid;place-items:center;color:#8a97ab}
+.cam img{position:absolute;inset:0;width:100%;height:100%;object-fit:contain}
+.cam [hidden]{display:none!important}
+.cam p{margin:0;padding:0 20px;text-align:center;font-size:16px}
+.cam figcaption{position:absolute;left:14px;top:12px;padding:3px 12px;border-radius:99px;background:rgba(20,24,31,.75);color:#fff;font-size:14px}
 section{padding:56px 0;border-top:1px solid var(--line)}
 h2.t{font-size:clamp(28px,3.6vw,42px);line-height:1.1;margin:0 0 10px;letter-spacing:-.01em}
 .sub{color:var(--mut);max-width:56ch;margin:0 0 34px}
@@ -75,6 +81,7 @@ footer{padding:30px 0 44px;color:var(--mut);font-size:15px;border-top:1px solid 
 .tele{grid-template-columns:1fr}.span2{grid-column:auto}
 .flow{grid-template-columns:1fr 1fr;gap:28px 0}.flow>div::after{display:none}
 .specs{grid-template-columns:1fr}
+.cams{grid-template-columns:1fr}
 nav{display:none}
 }
 @media(prefers-reduced-motion:reduce){*{transition:none!important;scroll-behavior:auto!important}}
@@ -82,7 +89,7 @@ nav{display:none}
 </head>
 <body>
 <header><div class="wrap"><b>ESP32 RC-Car</b>
-<nav><a href="#telemetrie">Telemetrie</a><a href="#technik">So funktioniert’s</a><a href="#projekt">Das Projekt</a></nav>
+<nav><a href="#kameras">Kameras</a><a href="#telemetrie">Telemetrie</a><a href="#technik">So funktioniert’s</a><a href="#projekt">Das Projekt</a></nav>
 <a class="gh" data-gh href="#" target="_blank" rel="noopener"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/></svg>GitHub</a></div></header>
 
 <main>
@@ -106,6 +113,15 @@ nav{display:none}
     <p class="hint">Rohwerte 0 bis 4095, Mitte = 2048</p>
   </div>
 </div>
+
+<section id="kameras"><div class="wrap">
+  <h2 class="t">Blick aus dem Auto</h2>
+  <p class="sub">Zwei Kameras zeigen live, was vor und hinter dem Auto passiert. Die Bilder laufen, sobald du auf der Seite bist.</p>
+  <div class="cams">
+    <figure class="cam"><img id="img-front" alt="Livebild der Frontkamera" hidden><p id="msg-front">Verbinde …</p><figcaption>Vorne</figcaption></figure>
+    <figure class="cam"><img id="img-back" alt="Livebild der Rückkamera" hidden><p id="msg-back">Verbinde …</p><figcaption>Hinten</figcaption></figure>
+  </div>
+</div></section>
 
 <section id="telemetrie"><div class="wrap">
   <h2 class="t">Live vom Auto</h2>
@@ -149,7 +165,7 @@ nav{display:none}
 <script>
 const $=id=>document.getElementById(id);
 const pad=$('pad'),knob=$('knob');
-const GITHUB_URL='https://github.com/orgs/P5-Natascha/repositories';  // hier den GitHub-Link eintragen
+const GITHUB_URL='https://github.com/DEIN-NAME/DEIN-REPO';  // hier den GitHub-Link eintragen
 const INVERT_Y=false;               // true, falls "hoch" am Auto den Wert 0 statt 4095 bedeuten soll
 let nx=0,ny=0,drag=false,idle=99,ws,canCtrl=false;
 const keys=new Set();
@@ -199,6 +215,7 @@ function render(s){
   canCtrl=s.ctrl;
   pad.classList.toggle('lock',!s.ctrl);
   $('ctrlMsg').textContent=!s.ctrl?'Nur Ansicht: Der Zugangsschlüssel fehlt oder ist nicht mehr gültig. Bitte den QR-Code erneut scannen.':s.blocked?'Die Verbindung zum Auto ist derzeit vom Admin gesperrt.':s.tcp?'Knauf ziehen oder mit Pfeiltasten und WASD fahren.':'Das Auto ist nicht verbunden. Der Server versucht es weiter.';
+  for(const n of ['front','back'])setCam(n,s.cam||{});
   const t=s.tele||{};
   setVal('batt',t.BATT,v=>v.toFixed(2));
   const bp=t.BATT==null?0:clamp((t.BATT-3.3)/(4.2-3.3),0,1);
@@ -215,11 +232,23 @@ function render(s){
     Object.assign($(id+'Bar').style,{width:p*100+'%',background:mm<500?'var(--bad)':mm<1000?'var(--warn)':'var(--ok)'});
   }
 }
+const KEY=new URLSearchParams(location.search).get('key')||'';
+const camOn={};
+function stopCam(n){camOn[n]=0;$('img-'+n).removeAttribute('src')}
+function setCam(n,c){
+  const img=$('img-'+n),msg=$('msg-'+n);
+  if(c.allowed&&!camOn[n]){camOn[n]=1;img.src='/camera/'+n+'?key='+encodeURIComponent(KEY)+'&t='+Date.now()}
+  if(!c.allowed&&camOn[n])stopCam(n);
+  const live=!!(c.allowed&&c[n]);
+  img.hidden=!live;
+  msg.textContent=live?'':!c.allowed?(c.disabled?'Kamera vom Admin deaktiviert':'Kamerabild nur mit Zugangsschlüssel'):'Warte auf Bild …';
+  msg.hidden=live;
+}
 function connect(){
   const key=new URLSearchParams(location.search).get('key')||'';
   ws=new WebSocket((location.protocol==='https:'?'wss://':'ws://')+location.host+'/ws?key='+encodeURIComponent(key));
   ws.onmessage=e=>render(JSON.parse(e.data));
-  ws.onclose=()=>{canCtrl=false;$('pBack').classList.remove('on');$('pCar').classList.remove('on');pad.classList.add('lock');setTimeout(connect,1500)};
+  ws.onclose=()=>{canCtrl=false;$('pBack').classList.remove('on');$('pCar').classList.remove('on');pad.classList.add('lock');['front','back'].forEach(n=>{stopCam(n);$('img-'+n).hidden=true;$('msg-'+n).textContent='Keine Verbindung zum Server';$('msg-'+n).hidden=false});setTimeout(connect,1500)};
 }
 document.querySelectorAll('[data-gh]').forEach(a=>a.href=GITHUB_URL);
 pad.addEventListener('contextmenu',e=>e.preventDefault());

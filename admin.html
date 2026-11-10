@@ -36,6 +36,7 @@ input{width:100%;font:inherit;font-size:14px;padding:10px 14px;border:1px solid 
 .dot{width:10px;height:10px;border-radius:50%;background:var(--bad)}.on .dot{background:var(--ok)}
 .rows div{display:flex;justify-content:space-between;gap:16px;padding:11px 0;border-bottom:1px solid var(--line)}
 .rows span{color:var(--mut)}
+.wide{grid-column:1/-1}
 #err{background:#fde8e6;border:1px solid var(--bad);border-radius:10px;padding:10px 16px;margin-bottom:20px}
 @media(max-width:760px){.grid{grid-template-columns:1fr}}
 </style>
@@ -72,6 +73,17 @@ input{width:100%;font:inherit;font-size:14px;padding:10px 14px;border:1px solid 
         <div><span>Joystick-Pakete pro Sekunde</span><b id="pps">0</b></div>
       </div>
     </section>
+    <section class="card wide">
+      <h2>Kameras</h2>
+      <p>Die Kameras laufen unabhängig von der Verbindung zum Auto, also auch bei gesperrter Verbindung. Das Bild wird nur geholt, solange jemand auf der Website ist.</p>
+      <div class="pill" id="camState"><i class="dot"></i><span id="camStateTxt">–</span></div>
+      <div class="btns"><button class="btn" id="camToggle">–</button></div>
+      <div class="rows" style="margin-top:26px">
+        <div><span>Frontkamera</span><b id="camFront">–</b></div>
+        <div><span>Rückkamera</span><b id="camBack">–</b></div>
+        <div><span>Zuschauer (Streams)</span><b id="camViewers">0</b></div>
+      </div>
+    </section>
   </div>
 </main>
 <script>
@@ -101,6 +113,13 @@ function render(s){
   $('drivers').textContent=s.drivers;
   $('mode').textContent={1:'Fahrt (1)',4:'Website aktiv (4)',0:'Aus (0)'}[s.mode]||s.mode;
   $('pps').textContent=s.pps;
+  $('camState').classList.toggle('on',s.camera);
+  $('camStateTxt').textContent=s.camera?'Kamera erlaubt':'Kamera deaktiviert';
+  $('camToggle').textContent=s.camera?'Kamera deaktivieren':'Kamera aktivieren';
+  $('camToggle').className='btn '+(s.camera?'danger':'ok');
+  $('camFront').textContent=s.camera?(s.cam_front?'Bild kommt an':'kein Bild'):'aus';
+  $('camBack').textContent=s.camera?(s.cam_back?'Bild kommt an':'kein Bild'):'aus';
+  $('camViewers').textContent=s.cam_viewers;
   $('err').hidden=true;
 }
 const fail=()=>{$('err').hidden=false};
@@ -110,6 +129,9 @@ $('regen').onclick=async()=>{
 };
 $('toggle').onclick=async()=>{
   try{render(await api('/api/car',{allowed:!cur.allowed}))}catch{fail()}
+};
+$('camToggle').onclick=async()=>{
+  try{render(await api('/api/camera',{allowed:!cur.camera}))}catch{fail()}
 };
 $('copy').onclick=async()=>{
   try{await navigator.clipboard.writeText($('url').value);$('copy').textContent='Kopiert'}catch{$('url').select()}

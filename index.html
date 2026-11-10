@@ -3,6 +3,9 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#eceff3">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
 <title>ESP32 RC-Car – Fernsteuerung im Browser</title>
 <style>
 :root{--bg:#eceff3;--ink:#14181f;--mut:#5b6573;--line:#cfd5de;--blue:#2447f5;--panel:#161b24;--panel2:#222a37;--ok:#1f9d55;--warn:#d98a00;--bad:#d6342c;
@@ -85,6 +88,43 @@ footer{padding:30px 0 44px;color:var(--mut);font-size:15px;border-top:1px solid 
 nav{display:none}
 }
 @media(prefers-reduced-motion:reduce){*{transition:none!important;scroll-behavior:auto!important}}
+
+/* Handy: kein Zoomen durch Doppeltippen, Joystick ohne Tipp-Markierung */
+html{-webkit-text-size-adjust:100%}
+body{touch-action:manipulation}
+#pad{-webkit-tap-highlight-color:transparent}
+.tip{display:none}
+@media(max-width:860px) and (orientation:portrait){.tip{display:block}}
+
+/* Fahransicht: Handy im Querformat. Joystick, beide Kameras und alle Werte auf einem Bildschirm, ohne Scrollen. */
+@media(orientation:landscape) and (max-height:520px){
+html,body{height:100%;overflow:hidden}
+body{overscroll-behavior:none}
+header,footer,#technik,#projekt,.hero h1,.lede,h2.t,.sub,.cockpit h2,.cockpit .hint{display:none}
+main{display:grid;grid-template-columns:minmax(190px,28vw) 1fr;grid-template-rows:auto minmax(0,1fr) auto;gap:8px;height:100vh;height:100dvh;
+padding:max(8px,env(safe-area-inset-top)) max(10px,env(safe-area-inset-right)) max(8px,env(safe-area-inset-bottom)) max(10px,env(safe-area-inset-left))}
+.hero,.hero>div:first-child,section,section .wrap{display:contents}
+.tele{grid-area:1/1/2/3;display:flex;gap:8px}
+.tele .tile{padding:6px 10px;border-radius:10px;min-width:0;flex:1}
+.tele .span2{flex:2.2}
+.tile h3{margin:0 0 2px;font-size:11px}
+.val{font-size:22px}
+.val small{font-size:11px;margin-left:3px}
+.bar{height:5px;margin-top:5px}
+.dist{gap:12px}
+.cockpit{grid-area:2/1/3/2;padding:10px;border-radius:18px;display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:0;overflow:hidden}
+#pad{width:min(100%,calc(100vh - 185px));width:min(100%,calc(100dvh - 185px))}
+#ctrlMsg{margin:0 0 6px;font-size:11px;line-height:1.25;text-align:center}
+#ctrlMsg.ok{display:none}
+.raw{margin-top:6px;gap:18px;font-size:11px}
+.raw b{font-size:20px;min-width:3.5ch}
+.cams{grid-area:2/2/3/3;grid-template-columns:1fr 1fr;gap:8px;height:100%;min-height:0}
+.cam{aspect-ratio:auto;height:100%;border-radius:12px}
+.cam p{font-size:13px}
+.cam figcaption{left:8px;top:8px;font-size:12px}
+.pills{grid-area:3/1/4/3;gap:6px}
+.pill{padding:2px 10px;font-size:12px}
+}
 </style>
 </head>
 <body>
@@ -111,6 +151,7 @@ nav{display:none}
     <div id="pad" role="application" aria-label="Virtueller Joystick"><div id="knob"></div></div>
     <div class="raw"><span>X<b id="rx">2048</b></span><span>Y<b id="ry">2048</b></span></div>
     <p class="hint">Rohwerte 0 bis 4095, Mitte = 2048</p>
+    <p class="hint tip">Tipp: Handy quer halten, dann siehst du beide Kameras und alle Werte beim Fahren.</p>
   </div>
 </div>
 
@@ -165,7 +206,7 @@ nav{display:none}
 <script>
 const $=id=>document.getElementById(id);
 const pad=$('pad'),knob=$('knob');
-const GITHUB_URL='https://github.com/DEIN-NAME/DEIN-REPO';  // hier den GitHub-Link eintragen
+const GITHUB_URL='https://github.com/orgs/P5-Natascha/repositories';  // hier den GitHub-Link eintragen
 const INVERT_Y=false;               // true, falls "hoch" am Auto den Wert 0 statt 4095 bedeuten soll
 let nx=0,ny=0,drag=false,idle=99,ws,canCtrl=false;
 const keys=new Set();
@@ -215,6 +256,7 @@ function render(s){
   canCtrl=s.ctrl;
   pad.classList.toggle('lock',!s.ctrl);
   $('ctrlMsg').textContent=!s.ctrl?'Nur Ansicht: Der Zugangsschlüssel fehlt oder ist nicht mehr gültig. Bitte den QR-Code erneut scannen.':s.blocked?'Die Verbindung zum Auto ist derzeit vom Admin gesperrt.':s.tcp?'Knauf ziehen oder mit Pfeiltasten und WASD fahren.':'Das Auto ist nicht verbunden. Der Server versucht es weiter.';
+  $('ctrlMsg').classList.toggle('ok',!!(s.ctrl&&!s.blocked&&s.tcp));
   for(const n of ['front','back'])setCam(n,s.cam||{});
   const t=s.tele||{};
   setVal('batt',t.BATT,v=>v.toFixed(2));
@@ -252,6 +294,7 @@ function connect(){
 }
 document.querySelectorAll('[data-gh]').forEach(a=>a.href=GITHUB_URL);
 pad.addEventListener('contextmenu',e=>e.preventDefault());
+addEventListener('resize',()=>setStick(nx,ny));
 setStick(0,0);connect();
 </script>
 </body>

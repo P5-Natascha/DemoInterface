@@ -96,6 +96,15 @@ body{touch-action:manipulation}
 .tip{display:none}
 @media(max-width:860px) and (orientation:portrait){.tip{display:block}}
 
+/* Knopf: Vollbild + Querformat (nur auf Touch-Geräten) */
+.fsbtn{display:none;align-items:center;justify-content:center;gap:10px;width:max-content;margin:18px auto 0;font:inherit;font-size:16px;padding:12px 22px;border:0;border-radius:99px;background:var(--blue);color:#fff;cursor:pointer}
+.fsbtn svg{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.fsbtn .p-out,html.fs .fsbtn .p-in{display:none}
+html.fs .fsbtn .p-out{display:inline}
+.cockpit p.fsnote{margin:10px 0 0;font-size:13px;text-align:center;color:#f3c86b}
+@media(hover:none) and (pointer:coarse){.fsbtn{display:flex}}
+html.fs .pills{display:none}
+
 /* Fahransicht: Handy im Querformat. Joystick, beide Kameras und alle Werte auf einem Bildschirm, ohne Scrollen. */
 @media(orientation:landscape) and (max-height:520px){
 html,body{height:100%;overflow:hidden}
@@ -124,6 +133,11 @@ padding:max(8px,env(safe-area-inset-top)) max(10px,env(safe-area-inset-right)) m
 .cam figcaption{left:8px;top:8px;font-size:12px}
 .pills{grid-area:3/1/4/3;gap:6px}
 .pill{padding:2px 10px;font-size:12px}
+.fsbtn{position:fixed;z-index:20;right:max(10px,env(safe-area-inset-right));bottom:max(10px,env(safe-area-inset-bottom));margin:0;padding:0;width:40px;height:40px;background:rgba(20,24,31,.72)}
+.fsbtn .tx{display:none}
+.cockpit p.fsnote{margin:6px 0 0;font-size:11px}
+html.fs main{grid-template-rows:auto minmax(0,1fr)}
+html.fs #pad{width:min(100%,calc(100vh - 160px));width:min(100%,calc(100dvh - 160px))}
 }
 </style>
 </head>
@@ -152,6 +166,11 @@ padding:max(8px,env(safe-area-inset-top)) max(10px,env(safe-area-inset-right)) m
     <div class="raw"><span>X<b id="rx">2048</b></span><span>Y<b id="ry">2048</b></span></div>
     <p class="hint">Rohwerte 0 bis 4095, Mitte = 2048</p>
     <p class="hint tip">Tipp: Handy quer halten, dann siehst du beide Kameras und alle Werte beim Fahren.</p>
+    <button class="fsbtn" id="fsBtn" type="button" aria-label="Vollbild und Querformat">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path class="p-in" d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/><path class="p-out" d="M9 4v5H4M15 4v5h5M9 20v-5H4M15 20v-5h5"/></svg>
+      <span class="tx" id="fsTx">Vollbild und Querformat</span>
+    </button>
+    <p class="fsnote" id="fsNote" hidden></p>
   </div>
 </div>
 
@@ -256,6 +275,7 @@ function render(s){
   canCtrl=s.ctrl;
   pad.classList.toggle('lock',!s.ctrl);
   $('ctrlMsg').textContent=!s.ctrl?'Nur Ansicht: Der Zugangsschlüssel fehlt oder ist nicht mehr gültig. Bitte den QR-Code erneut scannen.':s.blocked?'Die Verbindung zum Auto ist derzeit vom Admin gesperrt.':s.tcp?'Knauf ziehen oder mit Pfeiltasten und WASD fahren.':'Das Auto ist nicht verbunden. Der Server versucht es weiter.';
+  blocked=!!s.blocked;
   $('ctrlMsg').classList.toggle('ok',!!(s.ctrl&&!s.blocked&&s.tcp));
   for(const n of ['front','back'])setCam(n,s.cam||{});
   const t=s.tele||{};
@@ -294,6 +314,50 @@ function connect(){
 }
 document.querySelectorAll('[data-gh]').forEach(a=>a.href=GITHUB_URL);
 pad.addEventListener('contextmenu',e=>e.preventDefault());
+/* Vollbild und Querformat */
+let blocked=false,fsAuto=true;
+const FSROOT=document.documentElement;
+const fsEl=()=>document.fullscreenElement||document.webkitFullscreenElement;
+const fsCan=!!(FSROOT.requestFullscreen||FSROOT.webkitRequestFullscreen);
+const driveMQ=matchMedia('(orientation:landscape) and (max-height:520px) and (hover:none) and (pointer:coarse)');
+async function enterFs(){
+  let fs=!!fsEl(),lock=false;
+  if(!fs){
+    try{
+      if(FSROOT.requestFullscreen)await FSROOT.requestFullscreen({navigationUI:'hide'});
+      else if(FSROOT.webkitRequestFullscreen){FSROOT.webkitRequestFullscreen();await new Promise(r=>setTimeout(r,200))}
+    }catch{}
+    fs=!!fsEl();
+  }
+  try{await screen.orientation.lock('landscape');lock=true}catch{}
+  return{fs,lock};
+}
+function exitFs(){
+  try{screen.orientation.unlock()}catch{}
+  try{const r=(document.exitFullscreen||document.webkitExitFullscreen).call(document);r&&r.catch&&r.catch(()=>{})}catch{}
+}
+function onFs(){
+  const on=!!fsEl();
+  FSROOT.classList.toggle('fs',on);
+  $('fsTx').textContent=on?'Vollbild beenden':'Vollbild und Querformat';
+  if(!on){try{screen.orientation.unlock()}catch{}}
+  setStick(nx,ny);
+}
+document.addEventListener('fullscreenchange',onFs);
+document.addEventListener('webkitfullscreenchange',onFs);
+function note(t){const n=$('fsNote');n.textContent=t;n.hidden=false;setTimeout(()=>n.hidden=true,8000)}
+$('fsBtn').onclick=async()=>{
+  if(fsEl()){exitFs();return}
+  const r=await enterFs();
+  if(!r.fs)note(fsCan?'Der Browser hat das Vollbild abgelehnt.':'Dieser Browser erlaubt kein Vollbild. Tipp: Seite zum Home-Bildschirm hinzufügen, dann öffnet sie ohne Adressleiste.');
+  else if(!r.lock&&!driveMQ.matches)note('Bitte das Handy quer drehen. Der Browser kann die Ausrichtung nicht selbst festlegen.');
+};
+/* Automatisch: Browser erlauben Vollbild nur nach einer Berührung. Deshalb beim ersten Loslassen,
+   sobald die Fahransicht aktiv ist und die Steuerung freigeschaltet ist. */
+document.addEventListener('pointerup',e=>{
+  if(e.target.closest&&e.target.closest('#fsBtn'))return;
+  if(fsAuto&&!fsEl()&&driveMQ.matches&&canCtrl&&!blocked){fsAuto=false;enterFs()}
+});
 addEventListener('resize',()=>setStick(nx,ny));
 setStick(0,0);connect();
 </script>

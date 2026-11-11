@@ -285,7 +285,7 @@ function render(s){
   setVal('batt',t.BATT,v=>v.toFixed(2));
   const bp=t.BATT==null?0:clamp((t.BATT-3.3)/(4.2-3.3),0,1);
   Object.assign($('battBar').style,{width:bp*100+'%',background:colorFor(bp)});
-  setVal('ampr',t.AMPR,v=>v.toFixed(2));
+  setVal('ampr',t.AMPR,v=>(Math.abs(v)<0.005?0:v).toFixed(2));
   $('amprBar').style.width=(t.AMPR==null?0:clamp(t.AMPR/2,0,1)*100)+'%';
   setVal('lenk',t.LENK,v=>v.toFixed(2));
   const lp=t.LENK==null?.5:clamp(t.LENK/2.4,0,1),b=$('lenkBar').style;

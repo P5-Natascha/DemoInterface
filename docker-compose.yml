@@ -3,7 +3,7 @@ services:
     build: .
     restart: unless-stopped
     ports:
-      - "8080:8080"                                # öffentliche Steuerung
+      - "127.0.0.1:8080:8080"                                # öffentliche Steuerung
       - "${ADMIN_BIND:-127.0.0.1}:8081:8081"       # Admin: nur lokal, Pangolin liegt davor
     # Damit der Container den Host erreicht (z. B. den Testserver):
     extra_hosts:
@@ -15,6 +15,7 @@ services:
       DISCONNECT_GRACE: ${DISCONNECT_GRACE:-5}
       PUBLIC_URL: ${PUBLIC_URL:-}
       CONTROL_TOKEN: ${CONTROL_TOKEN:-}
+      AMPR_INVERT: ${AMPR_INVERT:-1}
       CAMERA_HOST: ${CAMERA_HOST:-}
       CAMERA_PORT: ${CAMERA_PORT:-81}
       CAMERA_FRONT_PATH: ${CAMERA_FRONT_PATH:-/camera/front_feed}

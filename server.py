@@ -23,6 +23,9 @@ DATA      = Path(os.getenv("DATA_DIR", "data"))
 CENTER, DEADMAN = 2048, 0.5                    # Mitte; Sekunden ohne Eingabe -> Stopp
 GRACE = float(os.getenv("DISCONNECT_GRACE", "5"))  # Sekunden nach dem letzten Browser bis zum Trennen
 
+# Das Auto meldet den Strom (AMPR) mit umgekehrtem Vorzeichen; 1 = hier einmal umdrehen
+AMPR_INVERT = os.getenv("AMPR_INVERT", "1").lower() in ("1", "true", "yes")
+
 # Kameras (laufen auf einem eigenen Port des Autos, unabhängig von UDP/TCP)
 CAMERA_HOST = os.getenv("CAMERA_HOST") or CAR_IP
 CAMERA_PORT = os.getenv("CAMERA_PORT") or "81"
@@ -95,7 +98,10 @@ async def read_telemetry(r):
         parts = line.decode(errors="ignore").strip().split(":", 2)
         if len(parts) == 3 and parts[0] == "SDATA":
             try:
-                state["tele"][parts[1]] = float(parts[2])
+                v = float(parts[2])
+                if parts[1] == "AMPR" and AMPR_INVERT:
+                    v = -v + 0.0            # "+ 0.0" verhindert die Anzeige von -0
+                state["tele"][parts[1]] = v
             except ValueError:
                 pass
 

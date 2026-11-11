@@ -33,6 +33,9 @@ FRONT_URL = os.getenv("CAMERA_FRONT_URL") or \
     f"http://{CAMERA_HOST}:{CAMERA_PORT}{os.getenv('CAMERA_FRONT_PATH') or '/camera/front_feed'}"
 BACK_URL = os.getenv("CAMERA_BACK_URL") or \
     f"http://{CAMERA_HOST}:{CAMERA_PORT}{os.getenv('CAMERA_BACK_PATH') or '/camera/back_feed'}"
+# raw = Stream des Autos Byte für Byte durchreichen (geringste Verzögerung)
+# shared = ein gemeinsamer Abruf, Bilder werden zerlegt und an alle verteilt (überspringt Bilder bei langsamem Netz)
+CAMERA_MODE = (os.getenv("CAMERA_MODE") or "raw").lower()
 CAM_KEY = os.getenv("CAMERA_REQUIRE_KEY", "0").lower() in ("1", "true", "yes")  # Bild nur mit gültigem Key
 
 cfg = {"token": "", "allowed": True, "camera": True}           # wird in data/settings.json gespeichert
@@ -217,6 +220,7 @@ class Cam:
         self.subs = set()    # Warteschlangen der Browser, die zuschauen
         self.frame = None    # letztes Bild
         self.ok = False      # kommt gerade Bild vom Auto?
+        self.last = 0.0      # Zeitpunkt der letzten Daten (nur Modus raw)
 
 
 CAMS = {"front": Cam("front", FRONT_URL), "back": Cam("back", BACK_URL)}
@@ -254,12 +258,16 @@ async def mjpeg_frames(resp):
                     buf = buf[i:]
                     break
                 body, buf = buf[start:end], buf[end:]
-            else:                                    # sonst bis zur nächsten Grenze warten
+            else:                                    # keine Länge (z. B. Flask/OpenCV): Bildende suchen
+                k = buf.find(b"\xff\xd9\r\n", start)  # Bild sofort ausliefern, nicht erst bei der nächsten Grenze
                 j = buf.find(marker, start)
-                if j < 0:
+                if k >= 0 and (j < 0 or k < j):
+                    body, buf = buf[start:k + 2], buf[k + 4:]
+                elif j >= 0:
+                    body, buf = buf[start:j], buf[j:]
+                else:
                     buf = buf[i:]
                     break
-                body, buf = buf[start:j], buf[j:]
             k = body.rfind(b"\xff\xd9")
             if body.startswith(b"\xff\xd8") and k > 0:
                 yield body[:k + 2]
@@ -299,6 +307,54 @@ async def cam_loop(cam):
                 await asyncio.sleep(2)
 
 
+async def raw_watch():
+    """Modus raw: markiert eine Kamera als aktiv, solange Daten ankommen."""
+    while True:
+        await asyncio.sleep(0.5)
+        for c in CAMS.values():
+            c.ok = time.monotonic() - c.last < 3
+
+
+async def cam_raw(req, cam):
+    """Reicht den Stream des Autos Byte für Byte an den Browser durch: kein Zwischenspeicher, keine Neuverpackung."""
+    timeout = aiohttp.ClientTimeout(total=None, connect=5, sock_read=10)
+    token, resp, last_err = object(), None, None
+    cam.subs.add(token)
+    try:
+        async with aiohttp.ClientSession(timeout=timeout) as sess:
+            while cam_wanted():
+                try:
+                    async with sess.get(cam.url) as up:
+                        if up.status != 200:
+                            raise ValueError(f"HTTP {up.status}")
+                        if resp is None:
+                            resp = web.StreamResponse(headers={
+                                "Content-Type": up.headers.get("Content-Type", "multipart/x-mixed-replace; boundary=frame"),
+                                "Cache-Control": "no-store"})
+                            await resp.prepare(req)
+                        last_err = None
+                        async for chunk in up.content.iter_any():
+                            cam.last = time.monotonic()
+                            await resp.write(chunk)
+                            if not cam_wanted():
+                                break
+                except (aiohttp.ClientError, asyncio.TimeoutError, OSError, ValueError) as e:
+                    if req.transport is None or req.transport.is_closing():
+                        break                                   # Browser ist weg
+                    if last_err != repr(e):
+                        last_err = repr(e)
+                        print(f"Kamera {cam.name} ({cam.url}): {e!r}", flush=True)
+                if cam_wanted() and not (req.transport is None or req.transport.is_closing()):
+                    await asyncio.sleep(2)
+                else:
+                    break
+    finally:
+        cam.subs.discard(token)
+    if resp is None:
+        raise web.HTTPBadGateway()
+    return resp
+
+
 async def cam_stream(req):
     """Gibt den gemeinsamen Kamerastream an einen Browser weiter (<img src="/camera/front">)."""
     cam = CAMS.get(req.match_info["name"])
@@ -306,6 +362,8 @@ async def cam_stream(req):
         raise web.HTTPNotFound()
     if not cfg["camera"] or (CAM_KEY and not can(req.query.get("key", ""))):
         raise web.HTTPForbidden()
+    if CAMERA_MODE == "raw":
+        return await cam_raw(req, cam)
     resp = web.StreamResponse(headers={
         "Content-Type": "multipart/x-mixed-replace; boundary=frame", "Cache-Control": "no-store"})
     await resp.prepare(req)
@@ -326,6 +384,10 @@ async def cam_stream(req):
     finally:
         cam.subs.discard(q)
     return resp
+
+
+def cam_coros():
+    return [raw_watch()] if CAMERA_MODE == "raw" else [cam_loop(c) for c in CAMS.values()]
 
 
 # ---------- Öffentliche Seite (Port 8080) ----------
@@ -424,8 +486,7 @@ async def main():
     loop = asyncio.get_running_loop()
     tr, _ = await loop.create_datagram_endpoint(
         asyncio.DatagramProtocol, remote_addr=(CAR_IP, UDP_PORT))
-    tasks = [asyncio.create_task(c) for c in (udp_loop(tr), tcp_loop(), mode_loop(), broadcast_loop(),
-                                          cam_loop(CAMS["front"]), cam_loop(CAMS["back"]))]
+    tasks = [asyncio.create_task(c) for c in (udp_loop(tr), tcp_loop(), mode_loop(), broadcast_loop(), *cam_coros())]
     runners = []
     for app, port in ((public_app(), HTTP_PORT), (admin_app(), ADMIN_PORT)):
         runner = web.AppRunner(app)

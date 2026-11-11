@@ -302,7 +302,12 @@ const camOn={};
 function stopCam(n){camOn[n]=0;$('img-'+n).removeAttribute('src')}
 function setCam(n,c){
   const img=$('img-'+n),msg=$('msg-'+n);
-  if(c.allowed&&!camOn[n]){camOn[n]=1;img.src='/camera/'+n+'?key='+encodeURIComponent(KEY)+'&t='+Date.now()}
+  if(c.allowed&&!camOn[n]){
+    camOn[n]=1;
+    const load=()=>{img.src='/camera/'+n+'?key='+encodeURIComponent(KEY)+'&t='+Date.now()};
+    img.onerror=()=>setTimeout(()=>{if(camOn[n])load()},2000);
+    load();
+  }
   if(!c.allowed&&camOn[n])stopCam(n);
   const live=!!(c.allowed&&c[n]);
   img.hidden=!live;

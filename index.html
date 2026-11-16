@@ -23,7 +23,7 @@ const TEXTE = {
   seitentitel: 'ESP32 RC-Car – Fernsteuerung im Browser',   // Text im Browser-Tab
 
   kopfzeile: {
-    name: 'ESP32 RC-Car',
+    name: 'Biermobil / Natascha',
     menue: {
       kameras: 'Kameras',
       telemetrie: 'Telemetrie',
@@ -34,8 +34,8 @@ const TEXTE = {
   },
 
   start: {
-    titel: 'Ein Auto.\nEin Joystick.\nDein Browser.',
-    einleitung: 'Dieses ferngesteuerte Auto fährt mit einem ESP32 und einer selbstgebauten Fernbedienung. Hier steuerst du es über einen virtuellen Joystick und siehst live, was die Sensoren melden.',
+    titel: 'Ein P5 Projekt \n am TBZ Mitte',
+    einleitung: 'Dieses ferngesteuerte Auto fährt mit einem Raspberrypi und einer selbstgebauten Fernbedienung. Hier steuerst du es über einen virtuellen Joystick und siehst live, was die Sensoren melden.',
     status: {                       // kleine Anzeigen unter der Einleitung
       server: 'Server',
       auto: 'Auto',
@@ -49,26 +49,26 @@ const TEXTE = {
     achseX: 'X',
     achseY: 'Y',
     rohwerte: 'Rohwerte 0 bis 4095, Mitte = 2048',
-    tippHandy: 'Tipp: Handy quer halten, dann siehst du beide Kameras und alle Werte beim Fahren.',
+    tippHandy: 'Handy quer halten für einen Vollbild-Fahrmodus',
     joystickBeschreibung: 'Virtueller Joystick',          // für Screenreader
     vollbild: {
       an: 'Vollbild und Querformat',                       // Text des Knopfs
       aus: 'Vollbild beenden',
     },
     meldungen: {
-      bereit: 'Knauf ziehen oder mit Pfeiltasten und WASD fahren.',
+      bereit: 'JoyStick ziehen oder mit Pfeiltasten und WASD fahren.',
       keinSchluessel: 'Nur Ansicht: Der Zugangsschlüssel fehlt oder ist nicht mehr gültig. Bitte den QR-Code erneut scannen.',
       gesperrt: 'Die Verbindung zum Auto ist derzeit vom Admin gesperrt.',
       autoGetrennt: 'Das Auto ist nicht verbunden. Der Server versucht es weiter.',
       vollbildAbgelehnt: 'Der Browser hat das Vollbild abgelehnt.',
       vollbildNichtMoeglich: 'Dieser Browser erlaubt kein Vollbild. Tipp: Seite zum Home-Bildschirm hinzufügen, dann öffnet sie ohne Adressleiste.',
-      handyDrehen: 'Bitte das Handy quer drehen. Der Browser kann die Ausrichtung nicht selbst festlegen.',
+      handyDrehen: 'Bitte das Handy quer drehen.',
     },
   },
 
   kameras: {
     titel: 'Blick aus dem Auto',
-    einleitung: 'Zwei Kameras zeigen live, was vor und hinter dem Auto passiert. Die Bilder laufen, sobald du auf der Seite bist.',
+    einleitung: 'Zwei Kameras zeigen live, was vor und hinter dem Auto passiert.',
     vorne: 'Vorne',
     hinten: 'Hinten',
     bildVorne: 'Livebild der Frontkamera',                 // für Screenreader
@@ -97,7 +97,7 @@ const TEXTE = {
   },
 
   technik: {
-    titel: 'So kommt dein Daumen ans Auto',
+    titel: 'So funktioniert die Steuerung',
     einleitung: 'Browser können keine UDP- oder TCP-Verbindungen öffnen. Deshalb vermittelt ein fester Server zwischen Website und Auto.',
     schritte: [                                            // beliebig viele, die Nummern kommen automatisch
       { titel: 'Joystick', text: 'Der Browser berechnet X und Y als Werte von 0 bis 4095, genau wie der Analogstick der Fernbedienung.' },

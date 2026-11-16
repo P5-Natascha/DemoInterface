@@ -473,6 +473,7 @@ async def api_camera(req):
 def admin_app():
     app = web.Application(middlewares=[csrf_guard])
     app.router.add_get("/", lambda r: web.FileResponse(HERE / "admin.html"))
+    app.router.add_get("/qr", lambda r: web.FileResponse(HERE / "qr.html"))   # nur der QR-Code, ohne Knöpfe
     app.router.add_get("/api/state", api_state)
     app.router.add_post("/api/key", api_key)
     app.router.add_post("/api/car", api_car)

@@ -1,0 +1,152 @@
+:root{--bg:#eceff3;--ink:#14181f;--mut:#5b6573;--line:#cfd5de;--blue:#2447f5;--panel:#161b24;--panel2:#222a37;--ok:#1f9d55;--warn:#d98a00;--bad:#d6342c;
+--font:"Bahnschrift","DIN Alternate","Segoe UI",system-ui,sans-serif}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{margin:0;background:var(--bg);color:var(--ink);font:17px/1.55 var(--font);font-variant-numeric:tabular-nums}
+a{color:inherit}
+:focus-visible{outline:3px solid var(--blue);outline-offset:3px}
+.wrap{max-width:1120px;margin:0 auto;padding:0 24px}
+header{padding:18px 0;border-bottom:1px solid var(--line)}
+header .wrap{display:flex;justify-content:space-between;align-items:center;gap:16px;flex-wrap:wrap}
+header b{font-size:19px;letter-spacing:.01em}
+nav{display:flex;gap:22px}
+nav a{text-decoration:none;color:var(--mut)}
+nav a:hover{color:var(--ink)}
+
+.hero{display:grid;grid-template-columns:1.05fr .95fr;gap:48px;align-items:center;padding:64px 0 72px}
+h1{font-size:clamp(40px,6vw,76px);line-height:.98;margin:0 0 22px;font-weight:700;letter-spacing:-.02em}
+.lede{max-width:46ch;color:var(--mut);font-size:19px;margin:0 0 26px}
+.pills{display:flex;gap:10px;flex-wrap:wrap}
+.pill{display:inline-flex;align-items:center;gap:8px;padding:7px 14px;border:1px solid var(--line);border-radius:99px;background:#fff;font-size:15px}
+.dot{width:10px;height:10px;border-radius:50%;background:var(--bad)}
+.on .dot{background:var(--ok)}
+
+.cockpit{background:var(--panel);color:#e8edf5;border-radius:28px;padding:28px;box-shadow:0 30px 60px -30px rgba(20,24,31,.55)}
+.cockpit h2{margin:0 0 4px;font-size:21px}
+.cockpit p{margin:0 0 22px;color:#98a4b6;font-size:15px}
+#pad{-webkit-touch-callout:none;position:relative;width:min(100%,300px);aspect-ratio:1;margin:0 auto;border-radius:50%;touch-action:none;user-select:none;cursor:grab;
+background:linear-gradient(var(--panel2),var(--panel2)) center/2px 70% no-repeat,linear-gradient(var(--panel2),var(--panel2)) center/70% 2px no-repeat,radial-gradient(circle,#1b2230 0 62%,#0f131a 63%);
+box-shadow:inset 0 0 0 2px #2c3647,inset 0 12px 30px rgba(0,0,0,.5)}
+#pad.drag{cursor:grabbing}
+#knob{position:absolute;left:50%;top:50%;width:34%;aspect-ratio:1;border-radius:50%;transform:translate(-50%,-50%);
+background:radial-gradient(circle at 35% 30%,#6f8cff,var(--blue) 60%,#1a33b8);box-shadow:0 10px 22px rgba(0,0,0,.55)}
+#pad.lock{opacity:.35;pointer-events:none}
+.raw{display:flex;justify-content:center;gap:34px;margin-top:22px;font-size:15px;color:#98a4b6}
+.raw b{display:block;font-size:34px;color:#fff;font-weight:600;line-height:1.1;min-width:4ch;text-align:center}
+.hint{text-align:center;margin:14px 0 0;font-size:14px;color:#7d8aa0}
+
+.gh{display:inline-flex;align-items:center;gap:8px;padding:8px 16px;border-radius:99px;background:var(--ink);color:#fff;text-decoration:none;font-size:15px}
+.gh:hover{background:var(--blue)}
+.gh svg{width:18px;height:18px;fill:currentColor}
+.cams{display:grid;grid-template-columns:1fr 1fr;gap:18px}
+.cam{position:relative;margin:0;aspect-ratio:4/3;background:#0f131a;border-radius:16px;overflow:hidden;display:grid;place-items:center;color:#8a97ab}
+.cam img{position:absolute;inset:0;width:100%;height:100%;object-fit:contain}
+.cam [hidden]{display:none!important}
+.cam p{margin:0;padding:0 20px;text-align:center;font-size:16px}
+.cam figcaption{position:absolute;left:14px;top:12px;padding:3px 12px;border-radius:99px;background:rgba(20,24,31,.75);color:#fff;font-size:14px}
+section{padding:56px 0;border-top:1px solid var(--line)}
+h2.t{font-size:clamp(28px,3.6vw,42px);line-height:1.1;margin:0 0 10px;letter-spacing:-.01em}
+.sub{color:var(--mut);max-width:56ch;margin:0 0 34px}
+.tele{display:grid;grid-template-columns:1.3fr 1fr 1fr;gap:18px}
+.tile{background:#fff;border:1px solid var(--line);border-radius:14px;padding:22px}
+.tile h3{margin:0 0 12px;font-size:16px;color:var(--mut);font-weight:500}
+.val{font-size:44px;font-weight:700;line-height:1}
+.val small{font-size:18px;font-weight:500;color:var(--mut);margin-left:4px}
+.bar{height:12px;background:#e3e7ee;border-radius:9px;margin-top:16px;position:relative;overflow:hidden}
+.bar i{position:absolute;left:0;top:0;bottom:0;width:0;background:var(--ok);border-radius:9px;transition:width .25s,background .25s}
+.bar.mid i{left:50%;width:0;border-radius:0}
+.span2{grid-column:span 2}
+.dist{display:grid;grid-template-columns:1fr 1fr;gap:22px}
+
+.flow{display:grid;grid-template-columns:repeat(var(--n,4),1fr);gap:0;counter-reset:s}
+.flow>div{padding:0 22px 0 0;position:relative}
+.flow>div:not(:last-child)::after{content:"";position:absolute;right:10px;top:15px;width:26px;height:2px;background:var(--line)}
+.flow b{display:inline-grid;place-items:center;width:32px;height:32px;border-radius:50%;background:var(--ink);color:#fff;font-size:15px;margin-bottom:12px}
+.flow h3{margin:0 0 6px;font-size:19px}
+.flow p{margin:0;color:var(--mut);font-size:15.5px}
+.specs{display:grid;grid-template-columns:repeat(2,1fr);gap:0 56px}
+.specs div{display:flex;justify-content:space-between;gap:20px;padding:14px 0;border-bottom:1px solid var(--line)}
+
+/* Live-Visualisierung: ein Steuerpaket auf dem Weg vom Browser bis zum Motor */
+.viz{margin-top:36px;background:#fff;border:1px solid var(--line);border-radius:14px;padding:22px}
+.viz-t{display:flex;justify-content:space-between;align-items:baseline;gap:12px;flex-wrap:wrap;margin-bottom:28px}
+.viz-t>b{font-size:18px}
+.viz-c{color:var(--mut);font-size:14px}.viz-c b{color:var(--ink);font-size:16px}
+.pipe{display:flex;align-items:stretch}
+.stage{flex:1;min-width:0;background:var(--bg);border:1px solid var(--line);border-radius:12px;padding:12px 10px;text-align:center;transition:border-color .18s,background .18s}
+.stage b{display:block;font-size:14px;margin-bottom:5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.stage .v{font-size:13px;color:var(--mut);font-variant-numeric:tabular-nums}
+.stage.hit{border-color:var(--blue);background:#e9eeff}
+.stage.out{background:var(--panel);border-color:var(--panel);color:#e8edf5}
+.stage.out .v{color:#9fb0c8}
+.link{position:relative;flex:0 0 54px;align-self:center;height:2px;background:var(--line);margin:0 8px}
+.link .proto{position:absolute;bottom:6px;left:50%;transform:translateX(-50%);font-size:11px;color:var(--mut);white-space:nowrap}
+.link .pkt{position:absolute;width:10px;height:10px;border-radius:50%;background:var(--blue);box-shadow:0 0 0 3px rgba(36,71,245,.18)}
+.viz-tip{margin:16px 0 0;font-size:13.5px;color:var(--mut)}
+.specs span{color:var(--mut)}
+footer{padding:30px 0 44px;color:var(--mut);font-size:15px;border-top:1px solid var(--line)}
+
+@media(max-width:860px){
+.pipe{flex-direction:column}
+.link{flex:0 0 30px;width:2px;height:30px;margin:8px auto}
+.link .proto{left:12px;top:50%;bottom:auto;transform:translateY(-50%)}
+.hero{grid-template-columns:1fr;gap:36px;padding:40px 0}
+.tele{grid-template-columns:1fr}.span2{grid-column:auto}
+.flow{grid-template-columns:1fr 1fr;gap:28px 0}.flow>div::after{display:none}
+.specs{grid-template-columns:1fr}
+.cams{grid-template-columns:1fr}
+nav{display:none}
+}
+@media(prefers-reduced-motion:reduce){*{transition:none!important;scroll-behavior:auto!important}}
+
+/* Handy: kein Zoomen durch Doppeltippen, Joystick ohne Tipp-Markierung */
+html{-webkit-text-size-adjust:100%}
+body{touch-action:manipulation}
+#pad{-webkit-tap-highlight-color:transparent}
+.tip{display:none}
+@media(max-width:860px) and (orientation:portrait){.tip{display:block}}
+
+/* Knopf: Vollbild + Querformat (nur auf Touch-Geräten) */
+.fsbtn{display:none;align-items:center;justify-content:center;gap:10px;width:max-content;margin:18px auto 0;font:inherit;font-size:16px;padding:12px 22px;border:0;border-radius:99px;background:var(--blue);color:#fff;cursor:pointer}
+.fsbtn svg{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.fsbtn .p-out,html.fs .fsbtn .p-in{display:none}
+html.fs .fsbtn .p-out{display:inline}
+.cockpit p.fsnote{margin:10px 0 0;font-size:13px;text-align:center;color:#f3c86b}
+@media(hover:none) and (pointer:coarse){.fsbtn{display:flex}}
+html.fs .pills{display:none}
+
+/* Fahransicht: Handy im Querformat. Joystick, beide Kameras und alle Werte auf einem Bildschirm, ohne Scrollen. */
+@media(orientation:landscape) and (max-height:520px){
+html,body{height:100%;overflow:hidden}
+body{overscroll-behavior:none}
+header,footer,#technik,#projekt,.hero h1,.lede,h2.t,.sub,.cockpit h2,.cockpit .hint{display:none}
+main{display:grid;grid-template-columns:minmax(190px,28vw) 1fr;grid-template-rows:auto minmax(0,1fr) auto;gap:8px;height:100vh;height:100dvh;
+padding:max(8px,env(safe-area-inset-top)) max(10px,env(safe-area-inset-right)) max(8px,env(safe-area-inset-bottom)) max(10px,env(safe-area-inset-left))}
+.hero,.hero>div:first-child,section,section .wrap{display:contents}
+.tele{grid-area:1/1/2/3;display:flex;gap:8px}
+.tele .tile{padding:4px 9px;border-radius:10px;min-width:0;flex:1}
+.tele .span2{flex:2.2}
+.tile h3{margin:0 0 1px;font-size:10.5px;line-height:1.3}
+.val{font-size:19px}
+.val small{font-size:10.5px;margin-left:3px}
+.bar{height:4px;margin-top:4px}
+.dist{gap:12px}
+.cockpit{grid-area:2/1/3/2;padding:10px;border-radius:18px;display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:0;overflow:hidden;position:relative}
+.padwrap{flex:1;min-height:0;width:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;container-type:size}
+#pad{width:min(100%,calc(100vh - 165px));width:min(100%,calc(100dvh - 165px));width:min(100cqw,calc(100cqh - 36px))}
+#ctrlMsg{position:absolute;z-index:2;left:8px;right:8px;top:8px;margin:0;padding:5px 8px;border-radius:8px;background:rgba(20,24,31,.92);font-size:11px;line-height:1.25;text-align:center;pointer-events:none}
+#ctrlMsg.ok{display:none}
+.raw{margin-top:8px;gap:14px;font-size:12px}
+.raw span{display:flex;align-items:baseline;gap:5px}
+.raw b{display:inline;font-size:18px;line-height:1.2;min-width:4ch;text-align:left}
+.cams{grid-area:2/2/3/3;grid-template-columns:1fr 1fr;gap:8px;height:100%;min-height:0}
+.cam{aspect-ratio:auto;height:100%;border-radius:12px}
+.cam p{font-size:13px}
+.cam figcaption{left:8px;top:8px;font-size:12px}
+.pills{grid-area:3/1/4/3;gap:6px}
+.pill{padding:2px 10px;font-size:12px}
+.fsbtn{position:fixed;z-index:20;right:max(10px,env(safe-area-inset-right));bottom:max(10px,env(safe-area-inset-bottom));margin:0;padding:0;width:40px;height:40px;background:rgba(20,24,31,.72)}
+.fsbtn .tx{display:none}
+.cockpit p.fsnote{position:absolute;left:8px;right:8px;bottom:8px;margin:0;padding:5px 8px;border-radius:8px;background:rgba(20,24,31,.92);font-size:11px}
+html.fs main{grid-template-rows:auto minmax(0,1fr)}
+}

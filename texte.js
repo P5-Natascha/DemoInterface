@@ -112,9 +112,9 @@ const TEXTE = {
 
   projekt: {
     titel: 'Das Projekt hinter Natascha',
-    einleitung: 'Natascha entstand als P5-Projektarbeit (Abitur 2027) in den Fächern TPR/ENG: Im Frühjahr 2026 haben wir ein vorhandenes Kinderauto zum Fahrroboter umgebaut – mit eigener Platine, Raspberry Pi als Bordcomputer „Captain“, selbstgebauter ESP32-Fernbedienung „Control“, diesem Webinterface und einer lasercut-gefertigten Holzkiste als Gewichtsfach im Heck.',
+    einleitung: 'Natascha entstand als P5-Projektarbeit (Abitur 2027) in den Fächern IFT/TPR: Im Frühjahr 2026 haben wir ein vorhandenes Kinderauto zum Fahrroboter umgebaut – mit eigener Platine, Raspberry Pi als Bordcomputer „Captain“, selbstgebauter ESP32-Fernbedienung „Control“, diesem Webinterface und einer lasercut-gefertigten Holzkiste als Gewichtsfach im Heck.',
     eckdaten: [                                            // [Bezeichnung, Wert], beliebig viele
-      ['Anlass', 'P5-Projektarbeit (Abitur 2027), Fächer TPR/ENG'],
+      ['Anlass', 'P5-Projektarbeit (Abitur 2027), Fächer IFT/TPR'],
       ['Zeitraum', 'Februar bis Juni 2026'],
       ['Basisfahrzeug', 'Kinderauto – eigentlich zum Mitfahren gedacht'],
       ['Bordcomputer „Captain“', 'Raspberry Pi mit Python und Threading'],

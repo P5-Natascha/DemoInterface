@@ -414,6 +414,8 @@ def public_app():
     app.router.add_get("/ws", ws_handler)
     app.router.add_get("/camera/{name}", cam_stream)
     app.router.add_get("/", lambda r: web.FileResponse(HERE / "index.html"))
+    for f in ("style.css", "texte.js", "app.js", "favicon.svg", "favicon-32.png", "apple-touch-icon.png"):
+        app.router.add_get("/" + f, lambda r, f=f: web.FileResponse(HERE / f))
     return app
 
 
